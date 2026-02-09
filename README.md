@@ -12,7 +12,7 @@ wget https://raw.githubusercontent.com/SnowWoolf/kiosk/refs/heads/main/install_k
 ```
 Ctrl + Alt + F3
 ```
-Войти под пользователем (обычно `root`).
+Войти под пользователем с sudo.
 
 ---
 
@@ -20,35 +20,22 @@ Ctrl + Alt + F3
 ```
 ip a
 ```
-Ищем интерфейс `eth0` или `wlan0`, строка `inet`.
+Смотрим интерфейс `eth0` или `wlan0`, строка `inet`.
 
 ---
 
 ## Поменять адрес сайта (URL киоска)
-Открыть конфиг автозапуска (пример):
+Используется служебная команда:
 ```
-nano /home/user/.config/autostart/kiosk.desktop
-```
-или:
-```
-nano /etc/xdg/autostart/kiosk.desktop
+sudo kiosk-set-url http://IP:PORT/
 ```
 
-Найти строку с браузером:
+Пример:
 ```
-Exec=chromium-browser --kiosk http://OLD_ADDRESS
-```
-Заменить на:
-```
-Exec=chromium-browser --kiosk http://NEW_ADDRESS
+sudo kiosk-set-url http://192.168.1.100:8080/
 ```
 
-Сохранить:
-```
-Ctrl+O → Enter → Ctrl+X
-```
-
-Перезагрузка:
+После выполнения:
 ```
 reboot
 ```
@@ -57,12 +44,12 @@ reboot
 
 ## Задать статический IP
 
-Открыть конфиг сети (Debian/Ubuntu):
+Открыть конфиг сети:
 ```
-nano /etc/network/interfaces
+sudo nano /etc/network/interfaces
 ```
 
-Пример статического IP:
+Пример:
 ```
 auto eth0
 iface eth0 inet static
@@ -72,11 +59,11 @@ gateway 192.168.1.1
 dns-nameservers 8.8.8.8
 ```
 
-Сохранить и перезапустить сеть:
+Сохранить и применить:
 ```
-systemctl restart networking
+sudo systemctl restart networking
 ```
-или перезагрузка:
+или:
 ```
 reboot
 ```
