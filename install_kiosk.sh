@@ -148,5 +148,4 @@ chown $KIOSK_USER:$KIOSK_USER /home/$KIOSK_USER/.bash_profile
 
 echo
 echo "=== ГОТОВО ==="
-echo "Перезагрузи систему:"
-echo "reboot"
+echo "Перезагрузи систему: /sbin/reboot"
