@@ -153,4 +153,4 @@ systemctl enable kiosk.service
 echo
 echo "===== ГОТОВО ====="
 echo "Перезагрузи систему:"
-echo "reboot"
+echo "/sbin/reboot"
