@@ -5,6 +5,10 @@ wget https://raw.githubusercontent.com/SnowWoolf/kiosk/refs/heads/main/install_k
 ```
 
 
+---
+---
+
+
 # Работа с киоском (через терминал с подключенной клавиатурой)
 
 ## Открыть консоль
