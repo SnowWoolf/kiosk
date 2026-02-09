@@ -32,6 +32,16 @@ Section "ServerFlags"
 EndSection
 EOF
 
+echo "== hide cursor (hard) =="
+
+cat >/etc/X11/xorg.conf.d/99-hide-cursor.conf <<EOF
+Section "InputClass"
+    Identifier "HideCursor"
+    MatchIsPointer "on"
+    Option "CursorVisible" "false"
+EndSection
+EOF
+
 echo "== kiosk script =="
 
 cat >/usr/local/bin/kiosk.sh <<'EOF'
@@ -56,7 +66,6 @@ xrandr --output "$OUTPUT" --auto
 
 sleep 2
 
-unclutter -idle 0.01 -root -grab -visible false &
 
 while true
 do
