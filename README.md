@@ -20,8 +20,11 @@ wget -qO- https://raw.githubusercontent.com/SnowWoolf/debian-kiosk-mode/main/ins
 Терминал автоматически загрузится в киоск.
 
 **Отключить баннер переводчика chrome:**
+
 mkdir -p /etc/chromium/policies/managed
+
 nano /etc/chromium/policies/managed/kiosk.json
+
 Вставить:
 ```
 {
