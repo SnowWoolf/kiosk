@@ -1,104 +1,112 @@
 #!/bin/bash
 set -e
 
+USER_NAME=$(logname)
+HOME_DIR="/home/$USER_NAME"
+
 SERVER_IP="192.168.203.8"
 URL="http://192.168.203.8"
 
-echo "Installing kiosk..."
-
+echo "install packages"
 apt update
-apt install -y \
-    chromium \
-    unclutter \
-    xdotool \
-    wmctrl \
-    x11-xserver-utils
+apt install -y chromium unclutter wmctrl xdotool
 
-########################################
-# автологин user
-########################################
-mkdir -p /etc/systemd/system/getty@tty1.service.d
+echo "disable sleep"
+systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
 
-cat >/etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin user --noclear %I \$TERM
+echo "create kiosk page"
+mkdir -p /opt/kiosk
+
+cat >/opt/kiosk/offline.html <<EOF
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body{
+ background:black;
+ color:white;
+ font-family:Arial;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ height:100vh;
+ flex-direction:column;
+}
+button{
+ font-size:30px;
+ padding:20px 40px;
+}
+</style>
+</head>
+<body>
+<h1>Нет связи с климатическим компьютером</h1>
+<button onclick="location.reload()">Обновить страницу</button>
+</body>
+</html>
 EOF
 
-########################################
-# XFCE автозапуск
-########################################
-mkdir -p /home/user/.config/autostart
+echo "kiosk launcher"
 
-cat >/home/user/.config/autostart/kiosk.desktop <<EOF
-[Desktop Entry]
-Type=Application
-Name=Kiosk
-Exec=/usr/local/bin/kiosk.sh
-EOF
-
-chown -R user:user /home/user/.config
-
-########################################
-# скрыть курсор
-########################################
-mkdir -p /etc/X11/xorg.conf.d
-
-cat >/etc/X11/xorg.conf.d/90-hide-cursor.conf <<EOF
-Section "InputClass"
-    Identifier "HideCursor"
-    MatchIsPointer "on"
-    Option "HWCursor" "off"
-EndSection
-EOF
-
-########################################
-# kiosk.sh
-########################################
 cat >/usr/local/bin/kiosk.sh <<EOF
 #!/bin/bash
 
-SERVER="$SERVER_IP"
-URL="$URL"
-
-xset s off
-xset -dpms
-xset s noblank
+export DISPLAY=:0
 
 unclutter -idle 0 -root &
 
-sleep 3
+while true
+do
+ if ping -c1 -W1 $SERVER_IP >/dev/null
+ then
+   chromium \
+     --kiosk \
+     --start-fullscreen \
+     --noerrdialogs \
+     --disable-infobars \
+     --disable-session-crashed-bubble \
+     --disable-translate \
+     $URL
+ else
+   chromium \
+     --kiosk \
+     --app=file:///opt/kiosk/offline.html
+ fi
 
-MON=\$(xrandr | grep " connected" | head -n1 | cut -d" " -f1)
-MODE=\$(xrandr | grep "*" | head -n1 | awk '{print \$1}')
-
-xrandr --output "\$MON" --mode "\$MODE"
-
-while true; do
-
-    if ping -c1 -W1 \$SERVER >/dev/null; then
-        PAGE="\$URL"
-    else
-        PAGE='data:text/html,<html style="background:black;color:white;font-size:40px;display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column">Нет связи с климатическим компьютером<br><br><button style="font-size:40px" onclick="location.reload()">Обновить страницу</button></html>'
-    fi
-
-    chromium \
-      --kiosk \
-      --start-fullscreen \
-      --incognito \
-      --noerrdialogs \
-      --disable-infobars \
-      --disable-session-crashed-bubble \
-      --overscroll-history-navigation=0 \
-      --check-for-update-interval=31536000 \
-      "\$PAGE"
-
-    sleep 2
+ sleep 2
 done
 EOF
 
 chmod +x /usr/local/bin/kiosk.sh
 
-echo "DONE. Rebooting..."
-sleep 2
-/sbin/reboot
+echo "systemd service"
+
+cat >/etc/systemd/system/kiosk.service <<EOF
+[Unit]
+Description=Kiosk
+After=graphical.target
+
+[Service]
+User=$USER_NAME
+Environment=DISPLAY=:0
+ExecStart=/usr/local/bin/kiosk.sh
+Restart=always
+
+[Install]
+WantedBy=graphical.target
+EOF
+
+systemctl daemon-reload
+systemctl enable kiosk.service
+
+echo "autologin xfce"
+
+mkdir -p /etc/lightdm/lightdm.conf.d
+
+cat >/etc/lightdm/lightdm.conf.d/50-autologin.conf <<EOF
+[Seat:*]
+autologin-user=$USER_NAME
+autologin-session=xfce
+EOF
+
+echo "DONE"
+echo "REBOOT NOW"
