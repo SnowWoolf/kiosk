@@ -59,6 +59,7 @@ open_chrome () {
   --disable-session-crashed-bubble \
   --disable-translate \
   --disable-features=TranslateUI \
+  --disable-component-extensions-with-background-pages \
   --overscroll-history-navigation=0 &
 }
 
