@@ -1,5 +1,5 @@
 apt update
-apt install -y xorg xinit openbox chromium unclutter wmctrl xdotool fonts-dejavu-core
+apt install -y xorg xinit openbox chromium unclutter fonts-dejavu-core
 
 USER_NAME="user"
 HOME_DIR="/home/$USER_NAME"
@@ -32,12 +32,12 @@ margin-top:40px;
 </head>
 <body>
 <h1>Нет связи с климатическим компьютером</h1>
-<button onclick="location.href='reload://kiosk'">Обновить страницу</button>
+<button onclick="location.reload()">Обновить страницу</button>
 </body>
 </html>
 EOF
 
-# ---------- KIOSK SCRIPT ----------
+# ---------- START SCRIPT ----------
 cat > /opt/kiosk/start.sh <<'EOF'
 #!/bin/bash
 
@@ -49,30 +49,19 @@ unclutter -idle 0 -root &
 
 URL=$(cat /opt/kiosk/url)
 
-chromium \
---kiosk "$URL" \
---start-fullscreen \
---noerrdialogs \
---disable-infobars \
---disable-session-crashed-bubble \
---disable-translate \
---disable-features=TranslateUI \
---overscroll-history-navigation=0 \
---check-for-update-interval=31536000 \
---simulate-outdated-no-au='Tue, 31 Dec 2099 23:59:59 GMT' &
-
-CHROME_PID=$!
-
 while true
 do
-sleep 5
+  chromium \
+  --kiosk "$URL" \
+  --start-fullscreen \
+  --noerrdialogs \
+  --disable-infobars \
+  --disable-session-crashed-bubble \
+  --disable-translate \
+  --disable-features=TranslateUI \
+  --overscroll-history-navigation=0
 
-if ! wmctrl -l | grep -i chromium >/dev/null
-then
-    chromium --kiosk file:///opt/kiosk/offline.html &
-    sleep 3
-fi
-
+  sleep 2
 done
 EOF
 
@@ -118,4 +107,3 @@ chmod +x /usr/local/bin/kiosk-set-url
 echo
 echo "ГОТОВО. ПЕРЕЗАГРУЗИ:"
 echo "reboot"
-/sbin/reboot
