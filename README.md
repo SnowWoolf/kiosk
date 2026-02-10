@@ -18,12 +18,8 @@
 wget -qO- https://raw.githubusercontent.com/SnowWoolf/debian-kiosk-mode/main/install_kiosk.sh | bash
 ```
 
-После завершения:
-```
-/sbin/reboot
-```
+После завершения установки система автоматически перезагрузится.
 
-Терминал автоматически загрузится в киоск.
 
 **Отключить баннер переводчика chrome:**
 ```
@@ -42,7 +38,9 @@ nano /etc/chromium/policies/managed/kiosk.json
 }
 ```
 Это полностью отключает переводчик на уровне политики.
-
+```
+/sbin/reboot
+```
 
 ---
 
