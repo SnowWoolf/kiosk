@@ -101,4 +101,4 @@ chmod +x /usr/local/bin/kiosk.sh
 
 echo "DONE. Rebooting..."
 sleep 2
-reboot
+/sbin/reboot
