@@ -1,24 +1,23 @@
 #!/bin/bash
 set -e
 
-SERVER_IP="192.168.203.8"
-URL="http://192.168.203.8"
+SERVER_IP="192.168.203.86"
+URL="http://192.168.203.86:8080"
 USER_NAME="user"
 
 echo "=== INSTALL KIOSK MODE ==="
 
 apt update
 apt install -y \
-xorg xinit openbox \
-chromium \
+xorg xinit openbox chromium \
 unclutter wmctrl xdotool \
-fonts-dejavu-core \
-locales
+fonts-dejavu-core locales
 
-echo "ru_RU.UTF-8 UTF-8" >> /etc/locale.gen
-locale-gen
+# локаль
+echo "ru_RU.UTF-8 UTF-8" >> /etc/locale.gen || true
+/usr/sbin/locale-gen || true
 
-### kiosk script
+### kiosk.sh
 cat >/usr/local/bin/kiosk.sh <<EOF
 #!/bin/bash
 export LANG=ru_RU.UTF-8
@@ -31,7 +30,7 @@ unclutter -idle 0 -root &
 
 show_no_link() {
 if ! wmctrl -l | grep -q NO_LINK; then
-xmessage -center -title NO_LINK -geometry 600x200 \
+xmessage -center -title NO_LINK -geometry 700x220 \
 -fn "-misc-dejavu sans-bold-r-normal--22-*-*-*-*-*-*-*" \
 "Нет связи с климатическим компьютером
 
@@ -53,7 +52,7 @@ chromium \
 --check-for-update-interval=31536000 \
 "$URL" &
 
-sleep 5
+sleep 6
 wmctrl -r Chromium -b add,fullscreen
 
 while true; do
@@ -69,9 +68,11 @@ EOF
 
 chmod +x /usr/local/bin/kiosk.sh
 
-### .xinitrc
+### xinitrc
 cat >/home/$USER_NAME/.xinitrc <<EOF
 #!/bin/bash
+exec openbox-session &
+sleep 2
 exec /usr/local/bin/kiosk.sh
 EOF
 
@@ -97,7 +98,5 @@ EOF
 chown $USER_NAME:$USER_NAME /home/$USER_NAME/.bash_profile
 
 echo "=== DONE ==="
-echo "Rebooting..."
-
-sleep 3
+sleep 2
 /sbin/reboot
