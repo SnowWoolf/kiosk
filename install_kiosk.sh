@@ -97,3 +97,4 @@ EOF
 
 echo "=== DONE ==="
 echo "Reboot system"
+/sbin/reboot
