@@ -44,7 +44,7 @@ kiosk-ip
 
 или
 ```
-hostname -I
+ip a
 ```
 
 ---
