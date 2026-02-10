@@ -1,5 +1,5 @@
 apt update
-apt install -y sudo xorg xinit openbox chromium unclutter wmctrl xdotool fonts-dejavu-core curl
+apt install -y xorg xinit openbox chromium unclutter wmctrl xdotool fonts-dejavu-core
 
 USER_NAME="user"
 HOME_DIR="/home/$USER_NAME"
@@ -32,13 +32,13 @@ margin-top:40px;
 </head>
 <body>
 <h1>Нет связи с климатическим компьютером</h1>
-<button onclick="location.reload()">Обновить страницу</button>
+<button onclick="location.href='reload://kiosk'">Обновить страницу</button>
 </body>
 </html>
 EOF
 
 # ---------- KIOSK SCRIPT ----------
-cat > /opt/kiosk/kiosk.sh <<'EOF'
+cat > /opt/kiosk/start.sh <<'EOF'
 #!/bin/bash
 
 xset -dpms
@@ -47,37 +47,42 @@ xset s noblank
 
 unclutter -idle 0 -root &
 
-while true
-do
 URL=$(cat /opt/kiosk/url)
 
-# проверяем доступность через GET
-if curl -m 3 -L "$URL" >/dev/null 2>&1
+chromium \
+--kiosk "$URL" \
+--start-fullscreen \
+--noerrdialogs \
+--disable-infobars \
+--disable-session-crashed-bubble \
+--disable-translate \
+--disable-features=TranslateUI \
+--overscroll-history-navigation=0 \
+--check-for-update-interval=31536000 \
+--simulate-outdated-no-au='Tue, 31 Dec 2099 23:59:59 GMT' &
+
+CHROME_PID=$!
+
+while true
+do
+sleep 5
+
+if ! wmctrl -l | grep -i chromium >/dev/null
 then
-    chromium \
-    --kiosk "$URL" \
-    --start-fullscreen \
-    --noerrdialogs \
-    --disable-infobars \
-    --disable-session-crashed-bubble \
-    --disable-translate \
-    --disable-features=TranslateUI \
-    --overscroll-history-navigation=0
-else
-    chromium --kiosk file:///opt/kiosk/offline.html
+    chromium --kiosk file:///opt/kiosk/offline.html &
+    sleep 3
 fi
 
-sleep 3
 done
 EOF
 
-chmod +x /opt/kiosk/kiosk.sh
+chmod +x /opt/kiosk/start.sh
 
 # ---------- OPENBOX ----------
 mkdir -p $HOME_DIR/.config/openbox
 
 cat > $HOME_DIR/.config/openbox/autostart <<'EOF'
-/opt/kiosk/kiosk.sh &
+/opt/kiosk/start.sh &
 EOF
 
 cat > $HOME_DIR/.xinitrc <<'EOF'
@@ -101,7 +106,7 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin $USER_NAME --noclear %I \$TERM
 EOF
 
-# ---------- CHANGE URL COMMAND ----------
+# ---------- CHANGE URL ----------
 cat > /usr/local/bin/kiosk-set-url <<'EOF'
 #!/bin/bash
 echo "$1" > /opt/kiosk/url
@@ -110,5 +115,7 @@ EOF
 
 chmod +x /usr/local/bin/kiosk-set-url
 
+echo
 echo "ГОТОВО. ПЕРЕЗАГРУЗИ:"
 echo "reboot"
+/sbin/reboot
