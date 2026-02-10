@@ -110,3 +110,4 @@ EOF
 
 echo "DONE"
 echo "REBOOT NOW"
+/sbin/reboot
