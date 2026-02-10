@@ -105,5 +105,5 @@ EOF
 chmod +x /usr/local/bin/kiosk-set-url
 
 echo
-echo "ГОТОВО. ПЕРЕЗАГРУЗИ:"
-echo "reboot"
+echo "ГОТОВО. ПЕРЕЗАГРУЗКА...."
+/sbin/reboot
