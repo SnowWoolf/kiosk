@@ -1,102 +1,119 @@
-#!/bin/bash
-
-set -e
-
-echo "=== Установка kiosk режима ==="
-
-KIOSK_USER="user"
-KIOSK_URL_FILE="/etc/kiosk-url"
-DEFAULT_URL="http://localhost:80/"
-
-# 1. Пакеты
 apt update
-apt install -y --no-install-recommends \
-    xserver-xorg \
-    x11-xserver-utils \
-    xinit \
-    openbox \
-    chromium \
-    unclutter \
-    wget
+apt install -y xorg xinit openbox chromium unclutter wmctrl xdotool fonts-dejavu-core curl
 
-# 2. Файл URL
-if [ ! -f "$KIOSK_URL_FILE" ]; then
-    echo "$DEFAULT_URL" > "$KIOSK_URL_FILE"
-fi
+useradd -m kiosk
+passwd -d kiosk
 
-# 3. Скрипт запуска браузера
-cat > /usr/local/bin/kiosk-start <<'EOF'
-#!/bin/bash
+mkdir -p /home/kiosk/.config/openbox
+mkdir -p /opt/kiosk
 
-URL=$(cat /etc/kiosk-url)
+# ---------- URL ----------
+echo "http://192.168.203.86:8080" > /opt/kiosk/url
 
-while true; do
-    ping -c1 -W1 8.8.8.8 >/dev/null 2>&1 && break
-    echo "Нет сети, ждём..."
-    sleep 2
-done
-
-unclutter -idle 0 &
-chromium \
-  --kiosk \
-  --noerrdialogs \
-  --disable-infobars \
-  --disable-session-crashed-bubble \
-  --disable-features=TranslateUI \
-  --check-for-update-interval=31536000 \
-  "$URL"
+# ---------- Страница нет связи ----------
+cat > /opt/kiosk/offline.html <<'EOF'
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body{
+background:#111;
+color:#fff;
+font-family:Arial;
+display:flex;
+align-items:center;
+justify-content:center;
+height:100vh;
+flex-direction:column;
+}
+button{
+font-size:32px;
+padding:20px 40px;
+margin-top:40px;
+}
+</style>
+</head>
+<body>
+<h1>Нет связи с климатическим компьютером</h1>
+<button onclick="location.reload()">Обновить страницу</button>
+</body>
+</html>
 EOF
 
-chmod +x /usr/local/bin/kiosk-start
-
-# 4. Команда смены URL
-cat > /usr/local/bin/kiosk-set-url <<'EOF'
+# ---------- kiosk script ----------
+cat > /opt/kiosk/kiosk.sh <<'EOF'
 #!/bin/bash
 
-if [ -z "$1" ]; then
-  echo "Использование: kiosk-set-url http://IP:PORT/"
-  exit 1
+xset -dpms
+xset s off
+xset s noblank
+
+unclutter -idle 0.1 -root &
+
+while true
+do
+URL=$(cat /opt/kiosk/url)
+
+if curl -m 2 -I "$URL" >/dev/null 2>&1
+then
+    chromium \
+    --kiosk "$URL" \
+    --noerrdialogs \
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --disable-translate \
+    --disable-features=TranslateUI \
+    --overscroll-history-navigation=0 \
+    --check-for-update-interval=31536000
+else
+    chromium --kiosk file:///opt/kiosk/offline.html
 fi
 
-echo "$1" > /etc/kiosk-url
-echo "URL изменён на $1"
+sleep 2
+done
+EOF
+
+chmod +x /opt/kiosk/kiosk.sh
+
+# ---------- openbox autostart ----------
+cat > /home/kiosk/.config/openbox/autostart <<'EOF'
+/opt/kiosk/kiosk.sh &
+EOF
+
+chown -R kiosk:kiosk /home/kiosk
+
+# ---------- startx on login ----------
+cat >> /home/kiosk/.bash_profile <<'EOF'
+if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+startx
+fi
+EOF
+
+# ---------- xinit ----------
+cat > /home/kiosk/.xinitrc <<'EOF'
+exec openbox-session
+EOF
+
+chown kiosk:kiosk /home/kiosk/.bash_profile
+chown kiosk:kiosk /home/kiosk/.xinitrc
+
+# ---------- autologin tty ----------
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+
+cat > /etc/systemd/system/getty@tty1.service.d/override.conf <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin kiosk --noclear %I $TERM
+EOF
+
+# ---------- команда смены URL ----------
+cat > /usr/local/bin/kiosk-set-url <<'EOF'
+#!/bin/bash
+echo "$1" > /opt/kiosk/url
 reboot
 EOF
 
 chmod +x /usr/local/bin/kiosk-set-url
 
-# 5. autologin systemd override
-mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin $KIOSK_USER --noclear %I \$TERM
-EOF
-
-# 6. автозапуск X
-USER_HOME="/home/$KIOSK_USER"
-
-cat > "$USER_HOME/.bash_profile" <<'EOF'
-if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
-    startx
-fi
-EOF
-
-# 7. xinitrc
-cat > "$USER_HOME/.xinitrc" <<'EOF'
-xset -dpms
-xset s off
-xset s noblank
-/usr/local/bin/kiosk-start
-EOF
-
-chown $KIOSK_USER:$KIOSK_USER "$USER_HOME/.bash_profile"
-chown $KIOSK_USER:$KIOSK_USER "$USER_HOME/.xinitrc"
-
-echo "=== Готово ==="
-echo "Команда смены адреса:"
-echo "kiosk-set-url http://IP:PORT/"
-echo
-echo "Перезагружаю..."
-sleep 2
-reboot
+echo "===== ГОТОВО ====="
+echo "Перезагрузи систему"
