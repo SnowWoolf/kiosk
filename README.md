@@ -44,15 +44,12 @@ ip a
 # СМЕНИТЬ АДРЕС ОТОБРАЖАЕМОЙ СТРАНИЦЫ
 
 ```
-sed -i 's|URL=".*"|URL="http://IP:PORT/"|' /home/user/.xinitrc
+NEW="**http://192.168.203.200:8080**"
+sed -i "s|URL=\".*\"|URL=\"$NEW\"|" /home/user/.xinitrc
+sed -i "s|fetch(\".*\"|fetch(\"$NEW\"|" /home/user/offline.html
+/sbin/reboot
 ```
 
-пример:
-```
-sed -i 's|URL=".*"|URL="http://192.168.1.50:8080"|' /home/user/.xinitrc
-```
-
-затем перезагрузить терминал.
 
 
 ---
